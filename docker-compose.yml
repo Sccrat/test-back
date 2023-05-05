@@ -1,0 +1,61 @@
+version: "3.8"
+services:
+    prueba-back:
+        build:
+            args:
+                user: admin
+                uid: 1000
+            context: ./
+            dockerfile: Dockerfile
+        image: prueba-back
+        container_name: prueba-back
+        restart: unless-stopped
+        working_dir: /var/www/
+        depends_on:
+            - prueba-mysql
+        volumes:
+            - ./:/var/www
+            - ./docker/php/conf.d/opcache.ini:/usr/local/etc/php/conf.d/opcache.ini
+        networks:
+            - prueba-network
+
+    prueba-mysql:
+        image: mariadb:10.10.2
+        # platform: linux/amd64
+        container_name: prueba-mysql
+        command: --default-authentication-plugin=mysql_native_password
+        restart: unless-stopped
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+            MYSQL_USER: ${DB_USERNAME}
+        ports:
+            - "${DOCKER_DB_EXTERNAL_PORT:-3306}:3306"
+        volumes:
+            - prueba-db-volume:/var/lib/mysql
+        networks:
+            - prueba-network
+
+    prueba-nginx:
+        image: nginx:stable-alpine
+        container_name: prueba-nginx
+        restart: unless-stopped
+        depends_on:
+            - prueba-back
+        ports:
+            - "${DOCKER_NGNX_EXTERNAL_PORT:-8080}:80"
+        volumes:
+            - ./:/var/www
+            - ./docker/nginx:/etc/nginx/conf.d/
+        networks:
+            - prueba-network
+
+volumes:
+    prueba-db-volume:
+
+
+networks:
+    prueba-network:
+        name: prueba-network
+        driver: bridge
